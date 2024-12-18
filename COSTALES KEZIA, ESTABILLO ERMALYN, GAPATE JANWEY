@@ -1,0 +1,185 @@
+# LQ3_DSA// Sample data (replace with database or persistent storage in a real application)
+const ticketPeople = {
+    "admin": "password123" // Example ticket person credentials
+};
+
+let buses = [
+    {location: "Masbate", seats: Array(30).fill(null)},
+    {location: "Baguio", seats: Array(30).fill(null)},
+    {location: "Tagaytay", seats: Array(30).fill(null)}
+];
+
+// Helper function to get input (replace with your preferred input method)
+function getInput(message) {
+    const readline = require('readline').createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+    return new Promise(resolve => readline.question(message, answer => {
+        readline.close();
+        resolve(answer);
+    }));
+}
+
+//Ticket Person Functions
+
+async function ticketPersonLogin() {
+    const username = await getInput("Username:");
+    const password = await getInput("Password:");
+    return ticketPeople[username] === password;
+}
+
+async function viewBuses() {
+    for (let i = 0; i < buses.length; i++) {
+        console.log(\nBus ${i + 1}: ${buses[i].location});
+        for (let j = 0; j < buses[i].seats.length; j++) {
+            const passenger = buses[i].seats[j];
+            console.log(Seat ${j + 1}: ${passenger ? passenger.name : "AVAILABLE"});
+        }
+    }
+    await getInput("Press Enter to continue...");
+}
+
+async function manageBus() {
+    const busIndex = parseInt(await getInput("Enter bus number to manage (1-3):")) - 1;
+    if (busIndex >= 0 && busIndex < buses.length) {
+        while (true) {
+            const action = (await getInput("Choose action (ADD, REMOVE, CANCEL):")).toUpperCase();
+            if (action === "ADD") await addReservation(busIndex);
+            else if (action === "REMOVE") await removeReservation(busIndex);
+            else if (action === "CANCEL") break;
+            else console.log("Invalid action.");
+        }
+    } else {
+        console.log("Invalid bus number.");
+    }
+}
+
+async function addReservation(busIndex) {
+    const seatIndex = findAvailableSeat(buses[busIndex].seats);
+    if (seatIndex !== -1) {
+        const name = await getInput("Enter passenger name:");
+        buses[busIndex].seats[seatIndex] = {name, seat: seatIndex + 1};
+        console.log("Reservation added successfully!");
+    } else {
+        console.log("Bus is fully booked.");
+    }
+    const continueAdd = (await getInput("Continue adding reservations? (y/n):")).toLowerCase();
+    if (continueAdd !== 'y') return;
+}
+
+async function removeReservation(busIndex) {
+    const seatIndex = findOccupiedSeat(buses[busIndex].seats);
+    if (seatIndex !== -1) {
+        const name = await getInput("Enter passenger name to remove:");
+        if (buses[busIndex].seats[seatIndex].name === name) {
+            buses[busIndex].seats[seatIndex] = null;
+            console.log("Reservation removed successfully!");
+        } else {
+            console.log("Passenger not found on this seat.");
+        }
+    } else {
+        console.log("No reservations found on this bus.");
+    }
+
+    const continueRemove = (await getInput("Continue removing reservations? (y/n):")).toLowerCase();
+    if (continueRemove !== 'y') return;
+}
+
+function findAvailableSeat(seats) {
+    for (let i = 0; i < seats.length; i++) {
+        if (seats[i] === null) return i;
+    }
+    return -1;
+}
+
+function findOccupiedSeat(seats) {
+    for (let i = 0; i < seats.length; i++) {
+        if (seats[i] !== null) return i;
+    }
+    return -1;
+}
+
+//Customer Functions
+
+async function displayBuses() {
+    for (let i = 0; i < buses.length; i++) {
+        console.log(${i + 1}. ${buses[i].location});
+    }
+}
+
+async function customerReserve() {
+    await displayBuses();
+    const busIndex = parseInt(await getInput("Enter bus number to reserve:")) - 1;
+    if (busIndex >= 0 && busIndex < buses.length) {
+        const availableSeat = findAvailableSeat(buses[busIndex].seats);
+        if (availableSeat !== -1) {
+            const name = await getInput("Enter your name:");
+            const seatNumber = availableSeat + 1;
+            buses[busIndex].seats[availableSeat] = {name, seat: seatNumber};
+            console.log(Reservation successful! Your seat number is ${seatNumber}.);
+        } else {
+            console.log("Bus is fully booked.");
+        }
+    } else {
+        console.log("Invalid bus number.");
+    }
+}
+
+async function customerCancelReservation() {
+    await displayBuses();
+    const busIndex = parseInt(await getInput("Enter bus number of your reservation:")) - 1;
+    if (busIndex >= 0 && busIndex < buses.length) {
+        const seatIndex = findOccupiedSeat(buses[busIndex].seats);
+        if (seatIndex !== -1){
+            const name = await getInput("Enter your name:");
+            if (buses[busIndex].seats[seatIndex].name === name) {
+                const confirm = (await getInput("Are you sure you want to cancel? (y/n):")).toLowerCase();
+                if (confirm === 'y') {
+                    buses[busIndex].seats[seatIndex] = null;
+                    console.log("Reservation cancelled successfully.");
+                } else {
+                    console.log("Reservation cancellation cancelled.");
+                }
+            } else {
+                console.log("Passenger not found on this bus.");
+            }
+        } else {
+            console.log("No reservations found on this bus.");
+        }
+    } else {
+        console.log("Invalid bus number.");
+    }
+}
+
+//Main program loop
+async function main() {
+    while (true) {
+        const role = (await getInput("Are you a TICKET PERSON or CUSTOMER?")).toUpperCase();
+        if (role === "TICKET PERSON") {
+            if (await ticketPersonLogin()) {
+                while (true) {
+                    const action = (await getInput("Choose action (LOGOUT, VIEW, MANAGE):")).toUpperCase();
+                    if (action === "LOGOUT") break;
+                    else if (action === "VIEW") await viewBuses();
+                    else if (action === "MANAGE") await manageBus();
+                    else console.log("Invalid action.");
+                }
+            } else {
+                console.log("Invalid username or password.");
+            }
+        } else if (role === "CUSTOMER") {
+            while (true) {
+                const action = (await getInput("Choose action (RESERVE, CANCEL RESERVATION, CANCEL):")).toUpperCase();
+                if (action === "RESERVE") await customerReserve();
+                else if (action === "CANCEL RESERVATION") await customerCancelReservation();
+                else if (action === "CANCEL") break;
+                else console.log("Invalid action.");
+            }
+        } else {
+            console.log("Invalid role.");
+        }
+    }
+}
+
+main();
